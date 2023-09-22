@@ -1,7 +1,7 @@
-# Template_name_short 
-Template name
+# ГиМС 
+Графические и мультимедийные системы
 
-` Template_name_short № курс `
+` ГиМС 3 курс `
 
 ПО-9 Мисиюк А. С.
 
