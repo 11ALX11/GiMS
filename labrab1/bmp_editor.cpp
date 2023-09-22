@@ -64,6 +64,18 @@ struct Color
 	BYTE blue;
 	BYTE green;
 	BYTE red;
+
+	bool Color::operator>(Color a) {
+		int c1 = 0, c2 = 0;
+		c1 += this->red;
+		c1 += this->blue;
+		c1 += this->green;
+
+		c2 += a.red;
+		c2 += a.blue;
+		c2 += a.green;
+		return c1 > c2;
+	}
 };
 
 //Размер 1-го пикселя
@@ -195,10 +207,10 @@ bool SaveImage(string path)
 		// Save MAS as .bmp
 		if (img_type == 2) {
 			int padding_size = (4 - width % 4) % 4;
-			int image_size = (width + padding_size) * height;
+			int image_size = (width + padding_size) * height * pixel_size;
 
 			// Set the file header fields.
-			FileHead.bfType = 0x4D42;
+			FileHead.bfType = MasHead.mfType;
 			FileHead.bfSize = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + image_size;
 			FileHead.bfReserved1 = 0;
 			FileHead.bfReserved2 = 0;
@@ -214,7 +226,7 @@ bool SaveImage(string path)
 			InfoHead.biSizeImage = image_size;
 			InfoHead.biXPelsPerMeter = 0;
 			InfoHead.biYPelsPerMeter = 0;
-			InfoHead.biClrUsed = 0;
+			InfoHead.biClrUsed = MasHead.mfClrUsed;
 			InfoHead.biClrImportant = 0;
 		}
 
@@ -245,7 +257,7 @@ bool SaveImage(string path)
 	else {
 		// Save bmp as .MAS
 		if (img_type == 1) {
-			MasHead.mfType = (DWORD)'M';
+			MasHead.mfType = FileHead.bfType;
 			MasHead.mfWidth = InfoHead.biWidth;
 			MasHead.mfHeight = InfoHead.biHeight;
 			MasHead.mfBitCount = InfoHead.biBitCount;
@@ -340,6 +352,36 @@ void ClearMemory(void) {
 	}
 }
 
+// Window is 3x1
+void ApplyMedianFilter() {
+	//Скопировать из исходного в результирующее изображение
+	dst_image = new Color[width * height];
+	memcpy(dst_image, src_image, width * height * sizeof(Color));
+
+	int i, j;
+	Color arr[3];
+	for (i = 0; i < height; i++)
+	{
+		for (j = 1; j < width - 1; j++)
+		{
+			int idx = i * width + j;
+			arr[0] = dst_image[idx - 1];
+			arr[1] = dst_image[idx];
+			arr[2] = dst_image[idx + 1];
+
+			for (int k = 0; k < 3; k++) {
+				for (int l = k; l + 1 < 3; l++) {
+					if (arr[l] > arr[l + 1]) {
+						swap(arr[l], arr[l + 1]);
+					}
+				}
+			}
+
+			dst_image[idx] = arr[1];
+		}
+	}
+}
+
 void ReadNoise(double& tmp) {
 	cout << "Enter noise amount (int)" << endl;
 	cin >> tmp;
@@ -373,6 +415,11 @@ int main(int argc, char* argv[])
 		ShowImage(temp);
 		break;
 	case 2:
+		ApplyMedianFilter();
+		CopyDstToSrc();
+		ReadPath(temp);
+		SaveImage(temp);
+		ShowImage(temp);
 		break;
 	default:
 		break;
