@@ -15,6 +15,7 @@ using namespace std;
 
 #pragma pack(2)
 
+// Misijuk Aleksey Sergeevich (MAS)
 const string file_ext = ".MAS";
 
 //Заголовок файла BMP 
@@ -311,9 +312,9 @@ void AddNoise(double probability)
 		x = rand() % width;
 		y = rand() % height;
 		pos = y * width + x;
-		src_image[pos].blue = 255;
-		src_image[pos].green = 255;
-		src_image[pos].red = 255;
+		src_image[pos].blue = rand() % 255;
+		src_image[pos].green = rand() % 255;
+		src_image[pos].red = rand() % 255;
 	}
 	cout << "Point was added: " << count << endl;
 }
@@ -429,6 +430,3 @@ int main(int argc, char* argv[])
 	cout << "END!" << endl;
 	return 0;
 }
-
-
-
