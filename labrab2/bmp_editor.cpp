@@ -9,6 +9,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 
 using namespace std;
 
@@ -100,6 +101,10 @@ Bright* contrast_image = 0;
 //Размер изображения
 int width = 0;
 int height = 0;
+
+//Мин. и макс. порог
+int min_porog = 0;
+int max_porog = 0;
 
 //Вывести заголовок BMP файла
 void ShowBMPHeaders(tBITMAPFILEHEADER fh, tBITMAPINFOHEADER ih)
@@ -396,6 +401,40 @@ void ApplyMedianFilter() {
 	}
 }
 
+Bright findPorog() {
+	if (contrast_image == 0) return 128;
+
+	long long sum = 0;
+
+	Bright* arr_temp = new Bright[width * height];
+
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			int ind = i * width + j;
+
+			sum += contrast_image[ind];
+
+			arr_temp[ind] = contrast_image[ind];
+		}
+	}
+
+	sort(arr_temp, arr_temp + height * width);
+
+	long long req_sum = round(sum * 0.8);
+	sum = 0;
+	int i = 0;
+	while (sum < req_sum) {
+		sum += arr_temp[i++];
+	}
+
+	Bright result = arr_temp[i];
+	cout << "Assumed porog - " << result << endl;
+
+	delete[] arr_temp;
+
+	return result;
+}
+
 void ImportSrcToBright()
 {
 	if (src_image != 0)
@@ -415,10 +454,14 @@ void ImportSrcToBright()
 	}
 }
 
-void PorogContrastToDest(short int porog = 128)
+void PorogContrastToDest(int porog = 128)
 {
 	if (contrast_image != 0)
 	{
+		if (porog < min_porog || porog > max_porog) {
+			porog = findPorog();
+		}
+
 		if (dst_image != 0) {
 			delete[] dst_image;
 		}
@@ -446,7 +489,7 @@ void PorogContrastToDest(short int porog = 128)
 	}
 }
 
-// Variant #5
+// Variant #5: Sobel(1)
 void ContrastSobol()
 {
 	if (bright_image == 0) return;
@@ -455,6 +498,9 @@ void ContrastSobol()
 		delete[] contrast_image;
 	}
 	contrast_image = new Bright[width * height];
+
+	min_porog = 0;
+	max_porog = 0;
 
 	for (int i = 1; i < height - 1; i++) {
 		for (int j = 1; j < width - 1; j++) {
@@ -468,7 +514,15 @@ void ContrastSobol()
 			y = (bright_image[ind0 - 1] + 2 * bright_image[ind0] + bright_image[ind0 + 1])
 				- (bright_image[ind2 - 1] + 2 * bright_image[ind2] + bright_image[ind2 + 1]);
 
-			contrast_image[ind] = abs(x) + abs(y);
+			contrast_image[ind] = sqrt(x * x + y * y);
+
+			if (i == 1 && j == 1) {
+				min_porog = max_porog = contrast_image[ind];
+			}
+			else {
+				if (contrast_image[ind] > max_porog) max_porog = contrast_image[ind];
+				if (contrast_image[ind] < min_porog) min_porog = contrast_image[ind];
+			}
 		}
 	}
 
@@ -486,6 +540,14 @@ void ContrastSobol()
 void ReadNoise(double& tmp) {
 	cout << "Enter noise amount (int)" << endl;
 	cin >> tmp;
+}
+
+int ReadPorog() {
+	int tmp;
+	cout << "Enter porog (from " << min_porog << " to " << max_porog << " or any another number):\n";
+	cin >> tmp;
+
+	return tmp;
 }
 
 int PromptChoice() {
@@ -525,8 +587,7 @@ int main(int argc, char* argv[])
 	case 3:
 		ImportSrcToBright();
 		ContrastSobol();
-		// PorogBrightToDest(ReadPorog());
-		PorogContrastToDest();
+		PorogContrastToDest(ReadPorog());
 
 		CopyDstToSrc();
 		ReadPath(temp);
