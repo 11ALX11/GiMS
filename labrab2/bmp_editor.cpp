@@ -79,6 +79,8 @@ struct Color
 	}
 };
 
+typedef unsigned short int Bright;
+
 //Размер 1-го пикселя
 int pixel_size = sizeof(Color);
 
@@ -90,6 +92,10 @@ int img_type = 0;
 Color* src_image = 0;
 //Результативное изображение
 Color* dst_image = 0;
+//Изображение яркость
+Bright* bright_image = 0;
+//Изображение контраст
+Bright* contrast_image = 0;
 
 //Размер изображения
 int width = 0;
@@ -351,6 +357,13 @@ void ClearMemory(void) {
 	{
 		delete[] dst_image;
 	}
+
+	if (bright_image != 0) {
+		delete[] bright_image;
+	}
+	if (contrast_image != 0) {
+		delete[] contrast_image;
+	}
 }
 
 // Window is 3x1
@@ -383,6 +396,93 @@ void ApplyMedianFilter() {
 	}
 }
 
+void ImportSrcToBright()
+{
+	if (src_image != 0)
+	{
+		if (bright_image != 0) {
+			delete[] bright_image;
+		}
+		bright_image = new Bright[width * height];
+
+		for (int i = 0; i < height; i++) {
+			for (int j = 0; j < width; j++) {
+				int ind = i * width + j;
+				Color pixel = src_image[ind];
+				bright_image[ind] = round(pixel.red * 0.6 + pixel.blue * 0.3 + pixel.green * 0.1);
+			}
+		}
+	}
+}
+
+void PorogContrastToDest(short int porog = 128)
+{
+	if (contrast_image != 0)
+	{
+		if (dst_image != 0) {
+			delete[] dst_image;
+		}
+		dst_image = new Color[width * height];
+
+		const Color BLACK = { 0, 0, 0 };
+		const Color WHITE = { 255, 255, 255 };
+
+		for (int i = 0; i < height; i++) {
+			for (int j = 0; j < width; j++) {
+				int ind = i * width + j;
+
+				if (contrast_image[ind] < porog) {
+					dst_image[ind] = BLACK;
+				}
+				else {
+					dst_image[ind] = WHITE;
+				}
+
+				// Debug (remove porog)
+				//Color pixel = { contrast_image[ind], contrast_image[ind], contrast_image[ind]};
+				//dst_image[ind] = pixel;
+			}
+		}
+	}
+}
+
+// Variant #5
+void ContrastSobol()
+{
+	if (bright_image == 0) return;
+
+	if (contrast_image != 0) {
+		delete[] contrast_image;
+	}
+	contrast_image = new Bright[width * height];
+
+	for (int i = 1; i < height - 1; i++) {
+		for (int j = 1; j < width - 1; j++) {
+			int ind = i * width + j;
+			int ind0 = (i - 1) * width + j;
+			int ind2 = (i + 1) * width + j;
+			int x, y;
+
+			x = (bright_image[ind0 + 1] + 2 * bright_image[ind + 1] + bright_image[ind2 + 1])
+				- (bright_image[ind0 - 1] + 2 * bright_image[ind - 1] + bright_image[ind2 - 1]);
+			y = (bright_image[ind0 - 1] + 2 * bright_image[ind0] + bright_image[ind0 + 1])
+				- (bright_image[ind2 - 1] + 2 * bright_image[ind2] + bright_image[ind2 + 1]);
+
+			contrast_image[ind] = abs(x) + abs(y);
+		}
+	}
+
+	// Дублируем границы
+	for (int i = 0; i < height; i++) {
+		contrast_image[i * width] = contrast_image[i * width + 1];
+		contrast_image[i * width + width - 1] = contrast_image[i * width + width - 2];
+	}
+	for (int j = 0; j < width; j++) {
+		contrast_image[j] = contrast_image[width + j];
+		contrast_image[(height - 1) * width + j] = contrast_image[(height - 2) * width + j];
+	}
+}
+
 void ReadNoise(double& tmp) {
 	cout << "Enter noise amount (int)" << endl;
 	cin >> tmp;
@@ -390,7 +490,7 @@ void ReadNoise(double& tmp) {
 
 int PromptChoice() {
 	int tmp;
-	cout << "Noise\t- 1,\nFilter \t- 2,\nExit \t- 0." << endl;
+	cout << "Noise\t- 1,\nFilter \t- 2,\nContrst - 3,\nExit \t- 0." << endl;
 	cin >> tmp;
 	return tmp;
 }
@@ -417,6 +517,17 @@ int main(int argc, char* argv[])
 		break;
 	case 2:
 		ApplyMedianFilter();
+		CopyDstToSrc();
+		ReadPath(temp);
+		SaveImage(temp);
+		ShowImage(temp);
+		break;
+	case 3:
+		ImportSrcToBright();
+		ContrastSobol();
+		// PorogBrightToDest(ReadPorog());
+		PorogContrastToDest();
+
 		CopyDstToSrc();
 		ReadPath(temp);
 		SaveImage(temp);
