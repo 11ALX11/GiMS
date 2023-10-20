@@ -537,6 +537,28 @@ void ContrastSobol()
 	}
 }
 
+void ApplyAfinChange(float** matrix)
+{
+	//work with src
+
+}
+
+// Variant #21
+void CompressHeight(int m)
+{
+	float** matrix = new float* [3];
+	for (int i = 0; i < 3; ++i) {
+		matrix[i] = new float[3];
+	}
+
+	matrix[0][0] = 1 / m; matrix[0][1] = 0; matrix[0][2] = 0;
+	matrix[1][0] = 0;	  matrix[1][1] = 1; matrix[1][2] = 0;
+	matrix[2][0] = 0;	  matrix[2][1] = 0; matrix[2][2] = 1;
+
+	ApplyAfinChange(matrix);
+	FreeAfinMatrix(matrix);
+}
+
 void ReadNoise(double& tmp) {
 	cout << "Enter noise amount (int)" << endl;
 	cin >> tmp;
@@ -550,9 +572,41 @@ int ReadPorog() {
 	return tmp;
 }
 
+int ReadCompressHeight() {
+	int tmp;
+	cout << "Enter height compression rate:\n";
+	cin >> tmp;
+
+	return tmp;
+}
+
+float** ReadAfinMatrix() {
+	float a11, a12, a21, a22, t1, t2;
+	cout << "Enter afin matrix (3x2):\n";
+	cin >> a11 >> a12 >> a21 >> a22 >> t1 >> t2;
+
+	float** matrix = new float* [3];
+	for (int i = 0; i < 3; ++i) {
+		matrix[i] = new float[3];
+	}
+
+	matrix[0][0] = a11; matrix[0][1] = a12; matrix[0][2] = 0;
+	matrix[1][0] = a21; matrix[1][1] = a22; matrix[1][2] = 0;
+	matrix[2][0] = t1;  matrix[2][1] = t2;  matrix[2][2] = 1;
+
+	return matrix;
+}
+
+void FreeAfinMatrix(float** matrix) {
+	for (int i = 0; i < 3; ++i) {
+		delete[] matrix[i];
+	}
+	delete[] matrix;
+}
+
 int PromptChoice() {
 	int tmp;
-	cout << "Noise\t- 1,\nFilter \t- 2,\nContrst - 3,\nExit \t- 0." << endl;
+	cout << "Noise\t- 1,\nFilter \t- 2,\nContrst - 3,\nCompres - 4,\nExit \t- 0." << endl;
 	cin >> tmp;
 	return tmp;
 }
@@ -573,16 +627,10 @@ int main(int argc, char* argv[])
 	case 1:
 		ReadNoise(noise);
 		AddNoise(noise);
-		ReadPath(temp);
-		SaveImage(temp);
-		ShowImage(temp);
 		break;
 	case 2:
 		ApplyMedianFilter();
 		CopyDstToSrc();
-		ReadPath(temp);
-		SaveImage(temp);
-		ShowImage(temp);
 		break;
 	case 3:
 		ImportSrcToBright();
@@ -590,13 +638,22 @@ int main(int argc, char* argv[])
 		PorogContrastToDest(ReadPorog());
 
 		CopyDstToSrc();
-		ReadPath(temp);
-		SaveImage(temp);
-		ShowImage(temp);
+		break;
+	case 4:
+		CompressHeight(ReadCompressHeight());
+		break;
+	case 5:
+		float** mtrx = ReadAfinMatrix();
+		ApplyAfinChange(mtrx);
+		FreeAfinMatrix(mtrx);
 		break;
 	default:
 		break;
 	}
+
+	ReadPath(temp);
+	SaveImage(temp);
+	ShowImage(temp);
 
 	ClearMemory();
 	cout << "END!" << endl;
