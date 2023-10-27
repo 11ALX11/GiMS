@@ -307,6 +307,9 @@ void CopyDstToSrc()
 {
 	if (dst_image != 0)
 	{
+		if (src_image != 0) delete[] src_image;
+		src_image = new Color[width * height];
+
 		memcpy(src_image, dst_image, width * height * sizeof(Color));
 	}
 }
@@ -537,23 +540,93 @@ void ContrastSobol()
 	}
 }
 
+void FreeAfinMatrix(float** matrix) {
+	for (int i = 0; i < 3; ++i) {
+		delete[] matrix[i];
+	}
+	delete[] matrix;
+}
+
+// works only for resizing, otherwise very unstable
 void ApplyAfinChange(float** matrix)
 {
-	//work with src
+	if (dst_image == 0) {
 
+		float x_max = height;
+		float y_max = width;
+
+		float new_x_max = abs(matrix[0][0]) * x_max + abs(matrix[1][0]) * y_max + matrix[2][0];
+		float new_y_max = abs(matrix[0][1]) * x_max + abs(matrix[1][1]) * y_max + matrix[2][1];
+
+		int new_width = ceil(new_y_max);
+		int new_height = ceil(new_x_max);
+
+		//cout << width << " -> " << new_width << endl;
+		//cout << height << " -> " << new_height << endl;
+
+		dst_image = new Color[new_width * new_height];
+
+		for (int i = 0; i < height; i++) {
+			for (int j = 0; j < width; j++) {
+				// Вычисляем новые координаты
+				int x = matrix[0][0] * i + matrix[1][0] * j + matrix[2][0];
+				int y = matrix[0][1] * i + matrix[1][1] * j + matrix[2][1];
+
+				// Проверяем, что новые координаты в пределах изображения
+				if (x >= 0 && x < new_height && y >= 0 && y < new_width) {
+					// Дублируем пиксель по вертикали и горизонтали
+					for (int dx = 0; dx <= abs(matrix[0][0]); dx++) {
+						for (int dy = 0; dy <= abs(matrix[1][1]); dy++) {
+							int nx = x + dx;
+							int ny = y + dy;
+
+							// Проверяем, что новые координаты в пределах изображения
+							if (nx >= 0 && nx < new_height && ny >= 0 && ny < new_width) {
+								dst_image[nx * new_width + ny] = src_image[i * width + j];
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Update headers width and height
+
+		int padding_size = (4 - new_width % 4) % 4;
+		int image_size = (new_width + padding_size) * new_height * pixel_size;
+
+		FileHead.bfSize = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + image_size;
+		InfoHead.biSizeImage = image_size;
+		InfoHead.biWidth = new_width;
+		InfoHead.biHeight = new_height;
+
+		MasHead.mfWidth = new_width;
+		MasHead.mfHeight = new_height;
+		MasHead.mfFileSize = sizeof(MasHead) + MasHead.mfWidth * MasHead.mfHeight * pixel_size;
+
+		width = new_width;
+		height = new_height;
+	}
 }
 
 // Variant #21
-void CompressHeight(int m)
+void CompressHeight(float m)
 {
 	float** matrix = new float* [3];
 	for (int i = 0; i < 3; ++i) {
 		matrix[i] = new float[3];
 	}
 
+	if (m == 0) {
+		m = 1;
+		cout << "Attempt to divide by zero! Escape with m = 1\n";
+	}
+
 	matrix[0][0] = 1 / m; matrix[0][1] = 0; matrix[0][2] = 0;
 	matrix[1][0] = 0;	  matrix[1][1] = 1; matrix[1][2] = 0;
 	matrix[2][0] = 0;	  matrix[2][1] = 0; matrix[2][2] = 1;
+
+	cout << m << " - " << matrix[0][0] << endl;
 
 	ApplyAfinChange(matrix);
 	FreeAfinMatrix(matrix);
@@ -572,8 +645,8 @@ int ReadPorog() {
 	return tmp;
 }
 
-int ReadCompressHeight() {
-	int tmp;
+float ReadCompressHeight() {
+	float tmp;
 	cout << "Enter height compression rate:\n";
 	cin >> tmp;
 
@@ -597,13 +670,6 @@ float** ReadAfinMatrix() {
 	return matrix;
 }
 
-void FreeAfinMatrix(float** matrix) {
-	for (int i = 0; i < 3; ++i) {
-		delete[] matrix[i];
-	}
-	delete[] matrix;
-}
-
 int PromptChoice() {
 	int tmp;
 	cout << "Noise\t- 1,\nFilter \t- 2,\nContrst - 3,\nCompres - 4,\nExit \t- 0." << endl;
@@ -616,7 +682,7 @@ int main(int argc, char* argv[])
 	srand((unsigned)time(NULL));
 
 	//Путь к текущему изображению
-	string path_to_image, temp; double noise = 0.0;
+	string path_to_image, temp; double noise = 0.0; float** mtrx = 0;
 
 	ReadPath(path_to_image);
 	OpenImage(path_to_image);
@@ -641,11 +707,14 @@ int main(int argc, char* argv[])
 		break;
 	case 4:
 		CompressHeight(ReadCompressHeight());
+		CopyDstToSrc();
 		break;
 	case 5:
-		float** mtrx = ReadAfinMatrix();
+		mtrx = ReadAfinMatrix();
 		ApplyAfinChange(mtrx);
 		FreeAfinMatrix(mtrx);
+
+		CopyDstToSrc();
 		break;
 	default:
 		break;
