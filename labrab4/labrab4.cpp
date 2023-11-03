@@ -42,7 +42,7 @@ void ApplySobelEdgeDetection(cv::Mat& input_image) {
 	cv::Mat abs_gradient;
 	cv::convertScaleAbs(gradient, abs_gradient);
 
-	input_image = abs_gradient;
+	cout << "Porog: " << cv::threshold(abs_gradient, input_image, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU) << endl;
 }
 
 void IsolateDarkRegions(cv::Mat& input_image, cv::Size kernel_size) {
