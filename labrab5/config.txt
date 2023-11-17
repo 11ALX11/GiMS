@@ -1,0 +1,4 @@
+video_source=0
+background_image_path=Lily.bmp
+key_color=0 0 0
+tolerance=5
