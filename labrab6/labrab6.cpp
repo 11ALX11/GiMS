@@ -46,7 +46,7 @@ void createPyramid() {
 		float angle = 2 * PI * i / 5;
 		float xTop = topRadius * std::cos(-angle);
 		float zTop = topRadius * std::sin(-angle);
-		
+
 		float yTop = 4.0f;
 		if (i == 0) yTop = 4.6f;
 		if (i == 2 || i == 3) yTop = 3.0f;
@@ -75,30 +75,40 @@ void drawPyramid() {
 	if (!drawPoints)
 	{
 		glBegin(GL_POLYGON);
-		glColor3f(bottomColorR, bottomColorG, bottomColorB);
 		for (size_t i = 5; i > 0; i--) {
-			glVertex3f(pyramidVertices[i-1].x, pyramidVertices[i-1].y, pyramidVertices[i-1].z);
+			if (i % 2) {
+				glColor3f(bottomColorR, bottomColorG, bottomColorB);
+			}
+			else {
+				glColor3f(topColorR, topColorG, topColorB);
+			}
+			glVertex3f(pyramidVertices[i - 1].x, pyramidVertices[i - 1].y, pyramidVertices[i - 1].z);
 		}
 		glEnd();
 
 		for (size_t i = 0; i < 5; ++i) {
 			glBegin(GL_POLYGON);
-			customglSetRandomColor();
+
+			glColor3f(p1ColorR[i], p1ColorG[i], p1ColorB[i]);
 			glVertex3f(pyramidVertices[i].x, pyramidVertices[i].y, pyramidVertices[i].z);
-			glVertex3f(pyramidVertices[i + 1].x, pyramidVertices[i + 1].y, pyramidVertices[i + 1].z);
-			customglSetRandomColor();
-			glVertex3f( pyramidVertices[(i + 6) % pyramidVertices.size()].x, 
-						pyramidVertices[(i + 6) % pyramidVertices.size()].y, 
-						pyramidVertices[(i + 6) % pyramidVertices.size()].z);
-			glVertex3f( pyramidVertices[(i + 5) % pyramidVertices.size()].x, 
-						pyramidVertices[(i + 5) % pyramidVertices.size()].y, 
-						pyramidVertices[(i + 5) % pyramidVertices.size()].z);
+			glVertex3f(pyramidVertices[(i + 1) % 5].x, pyramidVertices[(i + 1) % 5].y, pyramidVertices[(i + 1) % 5].z);
+
+			glColor3f(p2ColorR[i], p2ColorG[i], p2ColorB[i]);
+			glVertex3f(pyramidVertices[(i + 1) % 5 + 5].x,
+				pyramidVertices[(i + 1) % 5 + 5].y,
+				pyramidVertices[(i + 1) % 5 + 5].z);
+			glVertex3f(pyramidVertices[i + 5].x, pyramidVertices[i + 5].y, pyramidVertices[i + 5].z);
 			glEnd();
 		}
 
 		glBegin(GL_POLYGON);
-		glColor3f(topColorR, topColorG, topColorB);
 		for (size_t i = 5; i < 10; ++i) {
+			if (i % 2) {
+				glColor3f(topColorR, topColorG, topColorB);
+			}
+			else {
+				glColor3f(bottomColorR, bottomColorG, bottomColorB);
+			}
 			glVertex3f(pyramidVertices[i].x, pyramidVertices[i].y, pyramidVertices[i].z);
 		}
 		glEnd();
@@ -138,6 +148,16 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 			bottomColorG = randomFloat();
 			bottomColorB = randomFloat();
 
+			for (int i = 0; i < 7; i++) {
+				p1ColorR[i] = randomFloat();
+				p1ColorG[i] = randomFloat();
+				p1ColorB[i] = randomFloat();
+
+				p2ColorR[i] = randomFloat();
+				p2ColorG[i] = randomFloat();
+				p2ColorB[i] = randomFloat();
+			}
+
 			topColorR = randomFloat();
 			topColorG = randomFloat();
 			topColorB = randomFloat();
@@ -152,6 +172,16 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 			bottomColorR = randomFloat();
 			bottomColorG = randomFloat();
 			bottomColorB = randomFloat();
+
+			for (int i = 0; i < 7; i++) {
+				p1ColorR[i] = randomFloat();
+				p1ColorG[i] = randomFloat();
+				p1ColorB[i] = randomFloat();
+
+				p2ColorR[i] = randomFloat();
+				p2ColorG[i] = randomFloat();
+				p2ColorB[i] = randomFloat();
+			}
 
 			topColorR = randomFloat();
 			topColorG = randomFloat();
@@ -220,9 +250,8 @@ int main(void) {
 	glfwSetKeyCallback(window, keyCallback);
 
 	createPyramid();
-	std::cout << pyramidVertices.size() << std::endl;
 
-	glPointSize(5.0f);
+	glPointSize(10.0f);
 	glPolygonMode(GL_BACK, GL_LINE);
 
 	error = glGetError();
